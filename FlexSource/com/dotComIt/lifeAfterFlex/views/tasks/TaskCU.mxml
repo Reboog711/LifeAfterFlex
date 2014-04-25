@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" 
+			   close="onCloseRequest(event)">
+	<fx:Script>
+		<![CDATA[
+			import com.dotComIt.lifeAfterFlex.events.TaskEvent;
+			import com.dotComIt.lifeAfterFlex.model.TaskModel;
+			import com.dotComIt.lifeAfterFlex.model.UserModel;
+			import com.dotComIt.lifeAfterFlex.services.ITaskService;
+			
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.events.CloseEvent;
+			import mx.managers.PopUpManager;
+			
+			public var taskService :ITaskService = FlexGlobals.topLevelApplication.taskService;
+			
+			protected function onCancel(event:MouseEvent):void
+			{
+				onCloseRequest();
+			}
+			
+			protected function onCloseRequest(event:Event=null):void{
+				PopUpManager.removePopUp(this);
+			}
+			
+			private var _task :Object;
+			public function get task():Object{
+				return _task;
+			}
+			public function set task(value:Object):void{
+				_task = value;
+				this.description.text = value.description;
+				var counter :int = 0;
+				for each(var taskCategory :Object in TaskModel.taskCategories){
+					if(taskCategory.taskCategoryID == value.taskCategoryID){
+						this.taskCategoryDropDown.selectedIndex = counter;
+						break;
+					}
+					counter++;
+				}
+			}
+
+
+			protected function onSave(event:MouseEvent):void{
+				this.task.description = this.description.text;
+				if(this.taskCategoryDropDown.selectedItem){
+					this.task.taskCategoryID = (this.taskCategoryDropDown.selectedItem).taskCategoryID;
+					this.task.taskCategory = (this.taskCategoryDropDown.selectedItem).taskCategory;
+				} else {
+					this.task.taskCategoryID = 0;
+					this.task.taskCategory = 'All Categories';
+				}
+				if(!task.hasOwnProperty('taskID')){
+					this.task.taskID = 0;
+				}
+				taskService.addEventListener(TaskEvent.UPDATE_TASK_FAIL, onUpdateFail);
+				taskService.addEventListener(TaskEvent.UPDATE_TASK_SUCCESS, onUpdateSuccess);
+				taskService.addEventListener(TaskEvent.CREATE_TASK_SUCCESS, onCreateSuccess);
+				taskService.updateTask(task,UserModel.user.userID);
+				 
+			}
+			
+			protected function onUpdateFail(event:TaskEvent):void{
+				Alert.show(event.message,'Error');
+				removeUpdateTaskListeners();
+			}
+
+			protected function removeUpdateTaskListeners():void{ 
+				taskService.removeEventListener(TaskEvent.UPDATE_TASK_FAIL, onUpdateFail);
+				taskService.removeEventListener(TaskEvent.UPDATE_TASK_SUCCESS, onUpdateSuccess);
+				taskService.removeEventListener(TaskEvent.CREATE_TASK_SUCCESS, onCreateSuccess);
+			}
+
+			protected function onCreateSuccess(event:TaskEvent):void{
+				// on create add the new task to the current task dataprovider in the model
+				// which will in turn update the DataGrid
+				TaskModel.tasks.addItem(event.task[0]);
+				removeUpdateTaskListeners();
+				this.onCloseRequest();
+			}
+
+			protected function onUpdateSuccess(event:TaskEvent):void{
+				TaskModel.tasks.itemUpdated(task);
+				removeUpdateTaskListeners();
+				this.onCloseRequest();
+			}
+
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<s:Form>
+		<s:FormItem label="Description">
+			<s:TextArea id="description" />
+		</s:FormItem>
+		<s:FormItem label="Category" >
+			<s:DropDownList id="taskCategoryDropDown" prompt="No Category" 
+							dataProvider="{TaskModel.taskCategories}" 
+							labelField="taskCategory" width="150"
+							/>
+		</s:FormItem>
+		<s:FormItem>
+			<s:layout>
+				<s:HorizontalLayout />
+			</s:layout>
+			<s:Button label="Cancel"  click="onCancel(event)"/>
+			<s:Button label="Save" click="onSave(event)" />
+		</s:FormItem>
+
+	</s:Form>
+	
+</s:TitleWindow>

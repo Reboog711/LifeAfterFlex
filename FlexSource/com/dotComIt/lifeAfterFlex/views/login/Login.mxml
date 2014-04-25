@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:NavigatorContent xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark" 
+					xmlns:mx="library://ns.adobe.com/flex/mx">
+	<fx:Metadata>
+		[Event(name="loginSuccess", type="com.dotComIt.lifeAfterFlex.events.LoginEvent")]
+		[Event(name="loginFail", type="com.dotComIt.lifeAfterFlex.events.LoginEvent")]
+	</fx:Metadata>
+	<fx:Script>
+		<![CDATA[
+			import com.dotComIt.lifeAfterFlex.events.LoginEvent;
+			import com.dotComIt.lifeAfterFlex.model.UserModel;
+			import com.dotComIt.lifeAfterFlex.services.IAuthenticationService;
+			
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			
+			public var service :IAuthenticationService = FlexGlobals.topLevelApplication.authenticationService;
+
+			
+			protected function resetHandler(event:MouseEvent):void{
+				userName.text = '';
+				userName.errorString = '';
+				password.text = '';
+				password.errorString = '';
+			}
+			
+			protected function loginHandler(event:MouseEvent):void
+			{
+				var errorFound :Boolean = false;
+				if(this.userName.text == ''){
+					this.userName.errorString = 'You Must Enter a Username';
+					errorFound = true;
+				} else {
+					this.userName.errorString = '';
+				}
+				if(this.password.text == ''){
+					this.password.errorString = 'You Must Enter a Password';
+					errorFound = true;
+				} else {
+					this.password.errorString = '';
+				}
+				if(errorFound){
+					return;
+				}
+				
+				service.addEventListener(LoginEvent.LOGIN_SUCCESS, onLoginSuccess);
+				service.addEventListener(LoginEvent.LOGIN_FAIL, onLoginFail);
+				service.authenticate(this.userName.text, this.password.text);
+			}
+			
+			protected function onLoginFail(event:LoginEvent):void{
+				Alert.show(event.message,'Error');
+				removeLoginListeners();
+			}
+
+			protected function removeLoginListeners():void{
+				service.removeEventListener(LoginEvent.LOGIN_SUCCESS, onLoginSuccess);
+				service.removeEventListener(LoginEvent.LOGIN_FAIL, onLoginFail);
+			}
+
+			protected function onLoginSuccess(event:LoginEvent):void{
+				UserModel.user = event.userObject;
+				this.dispatchEvent(event);
+				removeLoginListeners();
+			}
+			
+			
+			protected function resetTasker(event:MouseEvent):void
+			{
+				this.userName.text = 'me';
+				this.password.text = 'me'
+				loginHandler(null);
+			}
+			
+			protected function loginAsCreator(event:MouseEvent):void
+			{
+				this.userName.text = 'wife';
+				this.password.text = 'wife'
+				loginHandler(null);
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:Form>
+		<s:FormItem label="Username">
+			<s:TextInput id="userName" keyUp="{userName.errorString = ''}"/>
+		</s:FormItem>
+		<s:FormItem label="Password">
+			<s:TextInput id="password" displayAsPassword="true"  keyUp="{userName.errorString = ''}"/>
+		</s:FormItem>
+		<s:FormItem>
+			<s:layout>
+				<s:HorizontalLayout />
+			</s:layout>
+			<s:Button label="Reset" click="resetHandler(event)" />
+			<s:Button label="Login" click="loginHandler(event)" />
+		</s:FormItem>
+		<s:FormItem>
+			<s:layout>
+				<s:HorizontalLayout />
+			</s:layout>
+			<s:Button label="Login as Tasker" click="resetTasker(event)" />
+			<s:Button label="Login as Creator" click="loginAsCreator(event)" />
+		</s:FormItem>
+	</s:Form>
+</s:NavigatorContent>

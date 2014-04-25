@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx"
+		 initialize="group1_initializeHandler(event)">
+	<fx:Metadata>
+		[Event(name="requestTaskFilter", type="com.dotComIt.lifeAfterFlex.events.TaskEvent")]
+		[Event(name="requestTaskNew", type="com.dotComIt.lifeAfterFlex.events.TaskEvent")]
+	</fx:Metadata>
+
+	<fx:Script>
+		<![CDATA[
+			import com.dotComIt.lifeAfterFlex.events.TaskEvent;
+			import com.dotComIt.lifeAfterFlex.model.TaskModel;
+			import com.dotComIt.lifeAfterFlex.services.ITaskService;
+			import com.dotComIt.lifeAfterFlex.vos.TaskFilterVO;
+			
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.events.FlexEvent;
+
+			public var taskService :ITaskService = FlexGlobals.topLevelApplication.taskService; 			
+			
+			protected function group1_initializeHandler(event:FlexEvent):void{
+				if(TaskModel.taskCategories.length <= 0){
+					taskService.addEventListener(TaskEvent.GET_TASK_CATEGORIES_FAIL,onGetTaskCategoriesFailure);
+					taskService.addEventListener(TaskEvent.GET_TASK_CATEGORIES_SUCCESS,onGetTaskCategoriesSuccess);
+					taskService.getTaskCategories();
+				}
+			}
+			
+			protected function onGetTaskCategoriesFailure(event:TaskEvent):void{
+				Alert.show(event.message,'Error');
+				removeGetTaskCategoriesListeners();
+			}
+			
+			protected function removeGetTaskCategoriesListeners():void{
+				taskService.removeEventListener(TaskEvent.GET_TASK_CATEGORIES_FAIL,onGetTaskCategoriesFailure);
+				taskService.removeEventListener(TaskEvent.GET_TASK_CATEGORIES_SUCCESS,onGetTaskCategoriesSuccess);
+			} 
+			
+			protected function onGetTaskCategoriesSuccess(event:TaskEvent):void{
+				TaskModel.taskCategories = event.collection;
+				removeGetTaskCategoriesListeners();
+			}
+			
+			protected function onFilterRequest(event:MouseEvent):void{
+				var filter :TaskFilterVO = new TaskFilterVO;
+				if(this.completedDropDown.selectedIndex == 0){
+					filter.completed = NaN;
+				} else {
+					filter.completed = this.completedDropDown.selectedItem.idField;
+				}
+				
+				if(taskCategoryDropDown.selectedItem){
+					filter.taskCategoryID = taskCategoryDropDown.selectedItem.taskCategoryID;
+				}
+
+				// we're doing this because some fields are mutually exclusive
+				// wouldn't want to specify an equal date and a start / end date
+				// have equal date take precedence 
+				if(this.scheduledEqualDate.selectedDate){
+					filter.scheduledEqualDate = this.scheduledEqualDate.selectedDate;
+				} else {
+					filter.scheduledStartDate = this.scheduledStartDate.selectedDate;
+					filter.scheduledEqualDate = this.scheduledEndDate.selectedDate;
+					filter.startDate = this.startDate.selectedDate;
+					filter.endDate = this.endDate.selectedDate;
+				}
+				
+				var newEvent :TaskEvent = new TaskEvent(TaskEvent.REQUEST_TASK_FILTER);
+				newEvent.filter = filter;
+				this.dispatchEvent(newEvent);
+
+
+			}
+			
+			protected function onNewTaskRequest(event:MouseEvent):void{
+				this.dispatchEvent(new TaskEvent(TaskEvent.REQUEST_TASK_NEW));
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+
+	<s:layout>
+		<s:HorizontalLayout paddingTop="5" paddingLeft="5" paddingRight="5" 
+							gap="10" verticalAlign="bottom" />
+	</s:layout>
+
+	<s:VGroup>
+		<s:Label text="Completed"  styleName="labelBold"/>
+		<s:DropDownList id="completedDropDown" selectedIndex="0">
+			<s:dataProvider>
+				<s:ArrayCollection>
+					<fx:Object idField="-1" label="All" />
+					<fx:Object idField="0" label="Open Tasks" />
+					<fx:Object idField="1" label="Completed Tasks" />
+				</s:ArrayCollection>
+			</s:dataProvider>
+		</s:DropDownList>
+	</s:VGroup>
+	<s:VGroup>
+		<s:Label text="Category"  styleName="labelBold"/>
+		<s:DropDownList id="taskCategoryDropDown" prompt="Select a Category"
+						labelField="taskCategory" width="150" dataProvider="{TaskModel.taskCategories}" />
+	</s:VGroup>
+	<s:BorderContainer>
+		<s:layout>
+			<s:HorizontalLayout paddingLeft="3" paddingRight="3" 
+								paddingTop="3" paddingBottom="3" />
+		</s:layout>
+		<s:VGroup>
+			<s:Label text="Created After" styleName="labelBold"/>
+			<mx:DateField id="startDate" editable="true"
+						  selectedDate="{TaskModel.taskFilter.startDate}" />
+		</s:VGroup>
+		<s:VGroup>
+			<s:Label text="Created Before"  styleName="labelBold"/>
+			<mx:DateField id="endDate" editable="true"
+						  selectedDate="{TaskModel.taskFilter.endDate}" />
+		</s:VGroup>
+	</s:BorderContainer>
+
+	<s:BorderContainer>
+		<s:layout>
+			<s:HorizontalLayout paddingLeft="3" paddingRight="3" paddingTop="3"
+								paddingBottom="3"  />
+		</s:layout>
+		<s:VGroup>
+			<s:Label text="Scheduled After"  styleName="labelBold"/>
+			<mx:DateField id="scheduledStartDate" editable="true"
+						  selectedDate="{TaskModel.taskFilter.scheduledStartDate}" />
+		</s:VGroup>
+		<s:VGroup>
+			<s:Label text="Scheduled On"  styleName="labelBold"/>
+			<mx:DateField id="scheduledEqualDate" editable="true" 
+						  selectedDate="{TaskModel.taskFilter.scheduledEqualDate}"/>
+		</s:VGroup>
+		<s:VGroup>
+			<s:Label text="Scheduled Before"  styleName="labelBold"/>
+			<mx:DateField id="scheduledEndDate" editable="true" 
+						  selectedDate="{TaskModel.taskFilter.scheduledEndDate}"/>
+		</s:VGroup>
+		
+	</s:BorderContainer>
+	<s:VGroup>
+		<s:Button label="New Task" click="onNewTaskRequest(event)" />
+		<s:Button label="Filter" click="onFilterRequest(event)" />
+	</s:VGroup>
+
+	
+</s:Group>

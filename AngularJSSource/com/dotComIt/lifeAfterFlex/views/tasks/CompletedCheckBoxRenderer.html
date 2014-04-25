@@ -1,0 +1,7 @@
+<div class="ngSelectionCell">
+    <input tabindex="-1" class="ngSelectionCheckbox" type="checkbox"
+           ng-checked="getCompletedCheckBoxValue(row.entity)"
+           ng-click="onCompletedCheckBoxChange(row.entity)"
+           ng-disabled="userModel.userModel.isUserInRole(userModel.userModel.CREATOR_ROLE)"
+            />
+</div>

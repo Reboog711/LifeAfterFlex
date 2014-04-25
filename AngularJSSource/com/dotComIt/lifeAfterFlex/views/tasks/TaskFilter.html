@@ -1,0 +1,98 @@
+<table>
+    <tr>
+        <td>Completed</td>
+        <td>Category</td>
+        <td class="border-top-left">Created After</td>
+        <td class="border-top-right">Created Before</td>
+        <td></td>
+        <td class="border-top-left">Scheduled After</td>
+        <td class="border-top">Scheduled On</td>
+        <td class="border-top-right">Scheduled Before</td>
+    </tr>
+    <tr>
+        <td>
+            <select ng-model="tasksModel.tasksModel.taskFilter.completed"
+                    ng-options="item.id as item.label for item in tasksModel.tasksModel.taskCompletedOptions"
+                    class="completedDropDown">
+            </select>
+        </td>
+        <td>
+            <select ng-model="tasksModel.tasksModel.taskFilter.taskCategoryID"
+                    ng-options="item.taskCategoryID as item.taskCategory for item in
+                       tasksModel.tasksModel.taskCategories"
+                    class="taskCategoryDropDown">
+            </select>
+        </td>
+        <td class="border-bottom-left">
+            <div class="form-horizontal">
+                <input type="text" datepicker-popup="MM/dd/yyyy"
+                       ng-model="tasksModel.tasksModel.taskFilter.startDate"
+                       is-open="createdAfterDateProperties.opened"
+                       datepicker-options="datePickerOptions"
+                       show-weeks="dateOptions.showWeeks"
+                       class="datePicker"/>
+                <button class="btn" ng-click="openDatePicker(createdAfterDateProperties)">
+                    <i class="icon-calendar"></i>
+                </button>
+            </div>
+        </td>
+        <td class="border-bottom-right">
+            <div class="form-horizontal">
+                <input type="text" datepicker-popup="MM/dd/yyyy"
+                       ng-model="tasksModel.tasksModel.taskFilter.endDate"
+                       is-open="createdBeforeDateProperties.opened"
+                       datepicker-options="datePickerOptions"
+                       show-weeks="dateOptions.showWeeks"
+                       class="datePicker"/>
+                <button class="btn" ng-click="openDatePicker(createdBeforeDateProperties)">
+                    <i class="icon-calendar"></i>
+                </button>
+            </div>
+        </td>
+        <td></td>
+        <td class="border-bottom-left">
+            <div class="form-horizontal">
+                <input type="text" datepicker-popup="MM/dd/yyyy"
+                       ng-model="tasksModel.tasksModel.taskFilter.ScheduledStartDate"
+                       is-open="scheduledAfterDateProperties.opened"
+                       datepicker-options="datePickerOptions"
+                       show-weeks="dateOptions.showWeeks"
+                       class="datePicker"/>
+                <button class="btn" ng-click="openDatePicker(scheduledAfterDateProperties)">
+                    <i class="icon-calendar"></i>
+                </button>
+            </div>
+        </td>
+        <td class="border-bottom">
+            <div class="form-horizontal">
+                <input type="text" datepicker-popup="MM/dd/yyyy"
+                       ng-model="tasksModel.tasksModel.taskFilter.scheduledEqualDate"
+                       is-open="scheduledOnProperties.opened"
+                       datepicker-options="datePickerOptions"
+                       show-weeks="dateOptions.showWeeks"
+                       class="datePicker"/>
+                <button class="btn" ng-click="openDatePicker(scheduledOnProperties)">
+                    <i class="icon-calendar"></i>
+                </button>
+            </div>
+        </td>
+        <td class="border-bottom-right">
+            <div class="form-horizontal">
+                <input type="text" datepicker-popup="MM/dd/yyyy"
+                       ng-model="tasksModel.tasksModel.taskFilter.ScheduledEndDate"
+                       is-open="scheduledBeforeDateProperties.opened"
+                       datepicker-options="datePickerOptions"
+                       show-weeks="dateOptions.showWeeks"
+                       class="datePicker"/>
+                <button class="btn" ng-click="openDatePicker(scheduledBeforeDateProperties)">
+                    <i class="icon-calendar"></i>
+                </button>
+            </div>
+        </td>
+        <td class="alignBottom">
+            <input type="button" value="New Task" ng-click="onNewTask()" /><br/>
+            <input type="button" value="Filter" ng-click="onFilterRequest()" />
+        </td>
+    </tr>
+
+</table>

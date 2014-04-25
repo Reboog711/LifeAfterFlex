@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx"
+		 initialize="group1_initializeHandler(event)">
+	<fx:Script>
+		<![CDATA[
+			import com.dotComIt.lifeAfterFlex.events.TaskEvent;
+			import com.dotComIt.lifeAfterFlex.model.TaskModel;
+			import com.dotComIt.lifeAfterFlex.services.ITaskService;
+			import com.dotComIt.lifeAfterFlex.vos.TaskFilterVO;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.events.DragEvent;
+			import mx.events.FlexEvent;
+			import mx.managers.DragManager;
+			
+			import spark.layouts.supportClasses.DropLocation;
+			[Bindable]
+			public var tasks:ArrayCollection = new ArrayCollection();
+
+			protected var taskService : ITaskService = FlexGlobals.topLevelApplication.taskService;			
+			
+			// used to keep track of tasks manually added
+			// changiung the date will reload data from the database and wipe out all tasks displayed
+			// keeping track of the manual tasks we can re-add them to the data that comes back from the dB
+			protected var addedTasks :ArrayCollection = new ArrayCollection();
+			
+			protected function taskList_dragEnterOrOverHandler(event:DragEvent):void{ 
+				event.action = DragManager.COPY;
+				event.ctrlKey = true;
+			}
+			
+			protected function taskList_dragDropHandler(event:DragEvent):void{
+				if (event.dragSource.hasFormat("itemsByIndex")){
+					event.preventDefault();
+					var dropTarget :List = event.currentTarget as List;
+
+					dropTarget.layout.hideDropIndicator();
+					dropTarget.destroyDropIndicator();
+					
+					var items:Vector.<Object> = event.dragSource.dataForFormat("itemsByIndex") as Vector.<Object>;
+
+				
+					var tempItem:Object = items[0];
+
+				
+					var dropLoc :DropLocation = dropTarget.layout.calculateDropLocation(event);
+					if (!dropLoc){
+						return;
+					}
+					
+					var dropIndex:int = dropLoc.dropIndex;
+					ArrayCollection(dropTarget.dataProvider).addItemAt(tempItem, dropIndex);
+
+					this.addedTasks.addItem(tempItem);
+				}                
+			}
+
+
+			
+			protected function group1_initializeHandler(event:FlexEvent):void
+			{
+				scheduleDate.selectedDate = new Date();
+				getScheduledTasks();
+				taskList.addEventListener(TaskEvent.SCHEDULED_TASK_UNSCHEDULE_REQUEST,onTaskUnschedule);
+			}
+
+			protected function getScheduledTasks(event:Event = null):void{
+				this.taskService.addEventListener(TaskEvent.GET_FILTERED_TASKS_SUCCESS,onGetTasksSuccess);
+				this.taskService.addEventListener(TaskEvent.GET_FILTERED_TASKS_FAIL,onGetTasksFail);
+				var taskFilter :TaskFilterVO = new TaskFilterVO();
+				taskFilter.scheduledEqualDate = scheduleDate.selectedDate;
+				this.taskService.getFilteredTasks( taskFilter)
+			}
+
+			protected function onGetTasksFail(event:TaskEvent):void{
+				Alert.show(event.message,'Error');
+				removeGetFilteredTasksListeners();
+			}
+
+			protected function removeGetFilteredTasksListeners():void{
+				taskService.removeEventListener(TaskEvent.GET_FILTERED_TASKS_FAIL,onGetTasksFail);
+				taskService.removeEventListener(TaskEvent.GET_FILTERED_TASKS_SUCCESS,onGetTasksSuccess);
+			}
+
+			protected function onGetTasksSuccess(event:TaskEvent):void{
+				this.tasks = event.collection;
+				// if any tasks were manually added; be sure to add them back in so they aren't manually lost
+				this.tasks.addAll(this.addedTasks);
+				removeGetFilteredTasksListeners();
+			}
+
+			protected function onTaskUnschedule(event:TaskEvent):void{
+				if(event.task.dateScheduled){
+					event.task.dateScheduled = null;
+					this.taskService.addEventListener(TaskEvent.SCHEDULE_SINGLE_TASK_SUCCESS,onUnscheduleTaskSuccess);
+					this.taskService.addEventListener(TaskEvent.SCHEDULE_SINGLE_TASK_FAIL, onUnscheduleTaskFail);
+					this.taskService.scheduleTask(event.task);
+				} else {
+					deleteTaskFromSchedule(event.task);
+				}
+			}
+
+			protected function onUnscheduleTaskFail(event:TaskEvent):void{
+				Alert.show(event.message,'Error');
+				removeUnscheduleTaskListeners();
+			}
+			
+			protected function removeUnscheduleTaskListeners():void{ 
+				taskService.removeEventListener(TaskEvent.SCHEDULE_SINGLE_TASK_SUCCESS,onUnscheduleTaskSuccess);
+				taskService.removeEventListener(TaskEvent.SCHEDULE_SINGLE_TASK_FAIL, onUnscheduleTaskFail);
+			}
+			
+			protected function onUnscheduleTaskSuccess(event:TaskEvent):void{
+				var counter :int = 0;
+				for each(var tempTask :Object in TaskModel.tasks){
+					if(tempTask.taskID == event.task[0].taskID){
+						TaskModel.tasks.setItemAt(event.task[0],counter);
+						TaskModel.tasks.itemUpdated(tempTask);
+						break;
+					}
+					counter++;
+				}
+				for each(tempTask in this.tasks){
+					if(tempTask.taskID == event.task[0].taskID){
+						deleteTaskFromSchedule(tempTask);
+						break;
+					}
+				} 
+				removeUnscheduleTaskListeners();
+			}
+
+
+			protected function deleteTaskFromSchedule(task:Object):void{
+				var itemIndex :int = this.tasks.getItemIndex(task);
+				if(itemIndex >= 0){
+					this.tasks.removeItemAt(itemIndex);
+				}
+				itemIndex = this.addedTasks.getItemIndex(task);
+				if(itemIndex >= 0){
+					this.addedTasks.removeItemAt(itemIndex);
+				}
+			}
+			
+			protected function onSave(event:MouseEvent):void{
+				taskService.addEventListener(TaskEvent.SCHEDULE_TASK_LIST_FAIL,onScheduleTaskListFail);
+				taskService.addEventListener(TaskEvent.SCHEDULE_TASK_LIST_SUCCESS,onScheduleTaskListSuccess);
+				taskService.scheduleTaskList(this.tasks ,this.scheduleDate.selectedDate);
+			}
+
+			
+			protected function onScheduleTaskListFail(event:TaskEvent):void{
+				Alert.show(event.message,'Error');
+				removeScheduleTaskListListeners();
+			} 
+
+			protected function removeScheduleTaskListListeners():void{ 
+				taskService.removeEventListener(TaskEvent.SCHEDULE_TASK_LIST_FAIL,onScheduleTaskListFail);
+				taskService.removeEventListener(TaskEvent.SCHEDULE_TASK_LIST_SUCCESS,onScheduleTaskListSuccess);
+			}
+
+			
+			protected function onScheduleTaskListSuccess(event:TaskEvent):void{
+				for each(var tempModelTask :Object in TaskModel.tasks){
+					for each(var tempLocalTask :Object in this.tasks){
+						if(tempModelTask.taskID == tempLocalTask.taskID){
+							tempModelTask.dateScheduled = this.scheduleDate.selectedDate.toDateString();
+							TaskModel.tasks.itemUpdated(tempModelTask);
+						}
+					}
+				}
+				this.addedTasks.removeAll();
+				removeScheduleTaskListListeners();
+			}
+
+			// Added for the bonus article 
+			public function addTask(task:Object):void{
+				this.taskList.dataProvider.addItem(task);
+				this.addedTasks.addItem(task);
+			}
+			
+			
+		]]>
+	</fx:Script>
+	
+	<s:layout>
+		<s:VerticalLayout />
+	</s:layout>
+
+	<s:Label text="Scheduler" fontWeight="bold" />
+	
+	<mx:DateField id="scheduleDate" change="getScheduledTasks(event)"/>
+	
+	<s:List id="taskList" height="100%" width="100%" 
+			dropEnabled="true" dragEnabled="false" dragMoveEnabled="false"
+			dragEnter="taskList_dragEnterOrOverHandler(event)"
+			dragOver="taskList_dragEnterOrOverHandler(event)"
+			dragDrop="taskList_dragDropHandler(event)"
+			dataProvider="{this.tasks}">
+		<s:itemRenderer>
+			<fx:Component>
+				<s:ItemRenderer width="100%" dataChange="itemrenderer1_dataChangeHandler(event)">
+					<fx:Script>
+						<![CDATA[
+							import com.dotComIt.lifeAfterFlex.events.TaskEvent;
+							import mx.events.FlexEvent;
+							
+							protected function itemrenderer1_dataChangeHandler(event:FlexEvent):void{
+								if(!data){
+									labelDisplay.text = '';
+									return;
+								}
+								labelDisplay.text = data.description;
+							}
+							
+							protected function button1_clickHandler(event:MouseEvent):void{
+								var taskEvent :TaskEvent = new TaskEvent(TaskEvent.SCHEDULED_TASK_UNSCHEDULE_REQUEST,true);
+								taskEvent.task = data;
+								this.dispatchEvent(taskEvent);
+							}
+							
+							
+						]]>
+					</fx:Script>
+					<s:HGroup width="100%" x="4" y="2" right="4" left="4" top="2" bottom="2">
+						<s:Label id="labelDisplay" width="100%" />
+						<s:Button label="X" width="20" click="button1_clickHandler(event)"  
+								  skinClass="com.dotComIt.lifeAfterFlex.skins.SmallButtonSkin" />
+					</s:HGroup>
+				</s:ItemRenderer>
+			</fx:Component>
+		</s:itemRenderer>
+	</s:List>
+
+	<s:Button label="Save" width="100%" click="onSave(event)" />
+	
+</s:Group>

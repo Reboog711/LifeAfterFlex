@@ -1,0 +1,43 @@
+<html>
+<head>
+
+    <!-- added for ng-dataGrid -->
+    <link href="js/libraries/ns-grid/2.0.7/ng-grid.css" rel="stylesheet" type="text/css" />
+	
+    <!-- adding in the Bootstrap.css to make use of UI Bootstrap -->
+    <link href="js/libraries/bootstrap/2.3.2/css/bootstrap.css" rel="stylesheet" type="text/css" />
+
+    <!-- our app's custom style sheet -->
+    <link href="com/dotComIt/lifeAfterFlex/styles/styles.css" rel="stylesheet" type="text/css" />
+
+    <!-- Jquery library needed for ng-datagrid; add this first  -->
+    <script src="js/libraries/jquery/1.8.3/jquery-1.8.3.js" type="text/javascript" ></script>
+	<!-- Angular Library -->
+    <script src="js/libraries/angularJS/1.0.7/angular.1.0.7.js"></script>
+	
+    <!-- added for ng-datagrid -->
+    <script src="js/libraries/ns-grid/2.0.7/ng-grid-2.0.7.debug.js" type="text/javascript"></script>
+	<!-- UI Bootstrap -->
+    <script src="js/libraries/UIBootstrap/ui-bootstrap-0.6.0.js"></script>
+
+	<!-- Angular Module Definition -->
+	<script src="com/dotComIt/lifeAfterFlex/app/LifeAfterFlex.js"></script>
+	<!-- models -->
+	<script src="com/dotComIt/lifeAfterFlex/model/UserModel.js"></script>
+    <script src="com/dotComIt/lifeAfterFlex/model/TasksModel.js"></script>
+    <script src="com/dotComIt/lifeAfterFlex/model/ModelLocator.js"></script>
+	<!-- services -->
+	<script src="com/dotComIt/lifeAfterFlex/services/mock/AuthenticationService.js"></script>
+    <script src="com/dotComIt/lifeAfterFlex/services/mock/TaskService.js"></script>
+
+	<!-- Controllers -->
+	<script src="com/dotComIt/lifeAfterFlex/controllers/LoginCtrl.js"></script>
+    <script src="com/dotComIt/lifeAfterFlex/controllers/TaskCUCtrl.js"></script>
+    <script src="com/dotComIt/lifeAfterFlex/controllers/MainScreenCtrl.js"></script>
+	<!-- Nav -->
+	<script src="com/dotComIt/lifeAfterFlex/navigation/Nav.js"></script>
+</head>
+<body ng-app="lifeAfterFlex">
+	<div ng-view class="horizontal-layout-100x100"></div>
+</body>
+</html>

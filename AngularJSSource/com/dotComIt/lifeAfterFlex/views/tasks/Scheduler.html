@@ -1,0 +1,23 @@
+<h1>Scheduler</h1>
+<div class="form-horizontal">
+    <input type="text" datepicker-popup="MM/dd/yyyy"
+           ng-model="scheduler.schedulerDate"
+           is-open="currentDateProperties.opened"
+           datepicker-options="datePickerOptions"
+           show-weeks="dateOptions.showWeeks"
+           class="datePicker" ng-change="onSchedulerDateChange()"
+            />
+    <button class="btn" ng-click="openDatePicker(currentDateProperties)">
+        <i class="icon-calendar"></i>
+    </button>
+</div>
+<br/>
+<div class="border-top-left-bottom-right">
+    <div ng-repeat="task in tasksModel.tasksModel.scheduledTasks" class="width100">
+        <div class="horizontal-layout-94">{{task.description}}</div><!--  -->
+        <div class="horizontal-layout-4"><button ng-click="onTaskUnschedule(task)">X</button></div><!--  -->
+    </div>
+</div
+
+<br/>
+<button class="width100" ng-click="onTaskListSchedule()">Save</button>

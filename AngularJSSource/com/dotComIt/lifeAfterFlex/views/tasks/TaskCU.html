@@ -1,0 +1,27 @@
+<div class="modal-header">
+    <h3>{{title}}</h3>
+</div>
+<div class="modal-body">
+    <table>
+        <tr>
+            <td>Description</td>
+            <td>
+                <textarea ng-model="taskVO.description"></textarea>
+            </td>
+        </tr>
+        <tr>
+            <td>Category</td>
+            <td>
+                <select ng-model="taskVO.taskCategoryID"
+                        ng-options="item.taskCategoryID as item.taskCategory for item in tasksModel.taskCategories"
+                        class="taskCategoryDropDown">
+                </select>
+            </td>
+        </tr>
+    </table>
+</div>
+
+<div class="modal-footer">
+    <button ng-click="onClose()">Cancel</button>
+    <button ng-click="onSave()">Save</button>
+</div>

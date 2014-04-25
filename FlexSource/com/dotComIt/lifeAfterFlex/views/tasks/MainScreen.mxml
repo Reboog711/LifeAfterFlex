@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:NavigatorContent xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark" 
+					xmlns:mx="library://ns.adobe.com/flex/mx"
+					show="navigatorcontent1_showHandler(event)" xmlns:tasks="com.dotComIt.lifeAfterFlex.views.tasks.*" xmlns:draggableDataGrid="com.dotComIt.lifeAfterFlex.views.draggableDataGrid.*" >
+	<fx:Script>
+		<![CDATA[
+			import com.dotComIt.lifeAfterFlex.events.TaskEvent;
+			import com.dotComIt.lifeAfterFlex.events.TaskEvent;
+			import com.dotComIt.lifeAfterFlex.events.TaskEvent;
+			import com.dotComIt.lifeAfterFlex.model.TaskModel;
+			import com.dotComIt.lifeAfterFlex.services.ITaskService;
+			import com.dotComIt.lifeAfterFlex.utils.GlobalFunctions;
+			import com.dotComIt.lifeAfterFlex.vos.TaskFilterVO;
+			import com.dotComIt.lifeAfterFlex.model.UserModel;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.events.FlexEvent;
+			import mx.managers.PopUpManager;
+			
+			import spark.components.Application;
+
+			public static const STATE_NORMAL :String = 'normal';
+			public static const STATE_SCHEDULER :String = 'scheduler';
+			
+			
+			public var taskService :ITaskService = FlexGlobals.topLevelApplication.taskService;
+			
+			protected function formatDateCreated(item:Object, column:GridColumn):String{
+				var localDate :Date = new Date(item.dateCreated);
+				var result :String = GlobalFunctions.formatDate(localDate);
+				return result;
+			}
+
+			protected function formatDateScheduled(item:Object, column:GridColumn):String{
+				var localDate :Date = new Date(item.dateScheduled);
+				var result :String = GlobalFunctions.formatDate(localDate);
+				return result;
+			}
+			
+			protected function navigatorcontent1_showHandler(event:FlexEvent):void
+			{
+				if(TaskModel.tasks.length <= 0){
+					TaskModel.taskFilter = new TaskFilterVO();
+					TaskModel.taskFilter.completed = 0
+					TaskModel.taskFilter.startDate = new Date(2013,2,1);
+					getFilteredTasks(TaskModel.taskFilter);
+				}
+				
+				if(UserModel.isUserInRole(UserModel.CREATOR_ROLE)){
+					this.editColumn.visible = false;
+					this.expandCollapseButton.visible = false;
+					this.expandCollapseButton.includeInLayout = false;
+				} else {
+					this.editColumn.visible = true;
+					this.expandCollapseButton.visible = true;
+					this.expandCollapseButton.includeInLayout = true;
+				}
+
+			}
+			
+			protected function getFilteredTasks(filter:TaskFilterVO):void{
+				taskService.addEventListener(TaskEvent.GET_FILTERED_TASKS_FAIL,onGetFilteredTasksFailure);
+				taskService.addEventListener(TaskEvent.GET_FILTERED_TASKS_SUCCESS,onGetFilteredTasksSuccess); 
+				taskService.getFilteredTasks(filter );
+			}
+			
+			protected function onGetFilteredTasksFailure(event:TaskEvent):void{
+				Alert.show(event.message,'Error');
+				removeGetFilteredTasksListeners();
+			}
+
+			protected function onGetFilteredTasksSuccess(event:TaskEvent):void{
+				TaskModel.tasks = event.collection;
+				// weird error that grid was not displaying data in columns; this appears to fix it
+				// didn't happen when I wrote the book; but did when creating the code archives
+				this.taskGrid.validateNow();
+				removeGetFilteredTasksListeners();
+			}
+
+			private function removeGetFilteredTasksListeners():void{
+				taskService.removeEventListener(TaskEvent.GET_FILTERED_TASKS_FAIL, onGetFilteredTasksFailure);
+				taskService.removeEventListener(TaskEvent.GET_FILTERED_TASKS_SUCCESS,onGetFilteredTasksSuccess);
+			}
+
+			protected function onRequestTaskFilter(event:TaskEvent):void{
+				this.getFilteredTasks(event.filter);
+			}
+			
+			protected function onRequestTaskNew(event:TaskEvent):void
+			{
+				openTaskPopUp(new Object(),'Create New Task');
+			}
+
+			
+			protected function openTaskPopUp(task:Object, title:String):void{
+				var tla :Application = FlexGlobals.topLevelApplication as Application;
+				var popup :TaskCU = PopUpManager.createPopUp(tla,TaskCU,true) as TaskCU;
+				popup.title = title;
+				popup.task = task;
+				PopUpManager.centerPopUp(popup);
+			}
+			
+			protected function taskGrid_initializeHandler(event:FlexEvent):void{
+				this.taskGrid.addEventListener(TaskEvent.REQUEST_TASK_EDIT, editTask);
+				this.taskGrid.addEventListener(TaskEvent.COMPLETE_TASK_REQUEST, onCompleteRequest); 
+				// added for bonus article
+				this.taskGrid.addEventListener(TaskEvent.ADD_TASK_TO_SCHEDULER, onAddTaskToScheduler);
+			}
+
+			// added for bonus article
+			protected function onAddTaskToScheduler(event:TaskEvent):void{
+				this.scheduler.addTask(event.task);
+			}
+			
+			
+			protected function editTask(event:TaskEvent):void{
+				openTaskPopUp(event.task,'Edit Task');
+			}
+			
+			protected function onSchedulerClick(event:MouseEvent):void{
+				var newState :String = STATE_NORMAL;
+				if(this.currentState == STATE_NORMAL){
+					newState = STATE_SCHEDULER;
+				}
+				this.currentState = newState;
+			}
+
+			protected function onCompleteRequest(event:TaskEvent):void{
+				this.taskService.addEventListener(TaskEvent.COMPLETE_TASK_FAIL, onCompleteTaskFail);
+				this.taskService.addEventListener(TaskEvent.COMPLETE_TASK_SUCCESS, onCompleteTaskSuccess);
+				this.taskService.completeTask(event.task);
+			}
+
+			protected function onCompleteTaskFail(event:TaskEvent):void{
+				Alert.show(event.message,'Error');
+				removeCompleteTaskListeners();
+			} 
+
+			protected function removeCompleteTaskListeners():void{
+				this.taskService.removeEventListener(TaskEvent.COMPLETE_TASK_FAIL, onCompleteTaskFail);
+				this.taskService.removeEventListener(TaskEvent.COMPLETE_TASK_SUCCESS, onCompleteTaskSuccess);
+			}
+
+			protected function onCompleteTaskSuccess(event:TaskEvent):void{
+				// update the item in the main model 
+				// this will update the completedDate displayed in the DataGrid 
+				// by replacing the in memory objhect with the object returned from the service
+				var counter :int = 0;
+				for each(var tempTask :Object in TaskModel.tasks){
+					if(tempTask.taskID == event.collection[0].taskID){
+						TaskModel.tasks.setItemAt(event.collection[0],counter);
+						break;
+					}
+					counter++;
+				}
+				removeCompleteTaskListeners();
+			}
+
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:states>
+		<s:State name="normal" />
+		<s:State name="scheduler" />
+	</s:states>
+
+	
+	<s:layout>
+		<s:VerticalLayout />
+	</s:layout>
+	
+	<tasks:TaskFilter id="taskFilterView" width="100%" requestTaskFilter="onRequestTaskFilter(event)" 
+					   requestTaskNew="onRequestTaskNew(event)"/>
+	
+	<s:HGroup width="100%" height="100%" id="hgroup">
+		<draggableDataGrid:DraggableDataGrid id= "taskGrid" width="100%" height="100%" dataProvider="{TaskModel.tasks}" 
+											 initialize="taskGrid_initializeHandler(event)">
+			<draggableDataGrid:columns>
+				<s:ArrayList>
+					<s:GridColumn headerText="Completed" rendererIsEditable="true">
+						<s:itemRenderer>
+							<fx:Component>
+								<s:GridItemRenderer dataChange="itemrenderer1_dataChangeHandler(event)" width="26" 
+													creationComplete="onRendererCreationComplete(event)">
+									<fx:Script>
+										<![CDATA[
+											import com.dotComIt.lifeAfterFlex.model.UserModel;
+											import mx.events.FlexEvent;
+											import com.dotComIt.lifeAfterFlex.events.TaskEvent;
+											override protected function updateDisplayList(unscaledWidth:Number, unscaledHeight:Number):void{
+												super.updateDisplayList(unscaledWidth, unscaledHeight);
+												check.setActualSize(check.getPreferredBoundsWidth(),check.getPreferredBoundsHeight());
+												check.x = (unscaledWidth - check.width)/2;
+												check.y = (unscaledHeight - check.height)/2;
+											}
+											
+											protected function itemrenderer1_dataChangeHandler(event:FlexEvent):void{
+												if(data){
+													if(data.completed){
+														check.selected = true;
+														return;
+													}
+												}
+												check.selected = false;
+											}
+											
+											protected function check_clickHandler(event:MouseEvent):void{
+												var newEvent :TaskEvent = new TaskEvent(TaskEvent.COMPLETE_TASK_REQUEST,true);
+												data.completed = check.selected;
+												newEvent.task = data;
+												this.dispatchEvent(newEvent);
+											}
+											
+											protected function onRendererCreationComplete(event:FlexEvent):void{
+												if(UserModel.isUserInRole(UserModel.CREATOR_ROLE)){
+													this.check.enabled = false;
+												} else {
+													this.check.enabled = true;
+												}
+											}
+
+											
+										]]>
+									</fx:Script>
+									<s:CheckBox id="check" click="check_clickHandler(event)" />
+								</s:GridItemRenderer>
+							</fx:Component>
+						</s:itemRenderer>
+					</s:GridColumn>
+					<s:GridColumn dataField="description" headerText="Description"/>
+					<s:GridColumn dataField="taskCategory" headerText="Category"/>
+					<s:GridColumn headerText="Date Created" labelFunction="formatDateCreated"/>
+					<s:GridColumn headerText="Date Scheduled" labelFunction="formatDateScheduled"/>
+					<s:GridColumn  id="editColumn" rendererIsEditable="true">
+						<s:itemRenderer>
+							<fx:Component>
+								<s:GridItemRenderer >
+									<fx:Script>
+										<![CDATA[
+											import com.dotComIt.lifeAfterFlex.events.TaskEvent;
+											import flash.events.MouseEvent;
+											import mx.events.FlexEvent;
+											import com.dotComIt.lifeAfterFlex.events.TaskEvent;
+											protected function button1_clickHandler(event:MouseEvent):void{
+												var newEvent :TaskEvent = new TaskEvent(TaskEvent.REQUEST_TASK_EDIT,true);
+												newEvent.task = data;
+												this.dispatchEvent(newEvent);
+											}
+
+											protected function button2_clickHandler(event:MouseEvent):void{
+												var newEvent :TaskEvent = new TaskEvent(TaskEvent.ADD_TASK_TO_SCHEDULER,true);
+												newEvent.task = data;
+												this.dispatchEvent(newEvent);
+											}
+										
+										]]>
+									</fx:Script>
+									<s:HGroup x="4" y="2" >
+										<s:Button x="4" y="2" label="Edit" click="button1_clickHandler(event)" />
+										<s:Button label="+" click="button2_clickHandler(event)" 
+												  visible="{outerDocument.currentState == MainScreen.STATE_SCHEDULER}"/>
+									</s:HGroup>
+								</s:GridItemRenderer>
+							</fx:Component>
+						</s:itemRenderer>
+					</s:GridColumn>
+				</s:ArrayList>
+			</draggableDataGrid:columns>
+		</draggableDataGrid:DraggableDataGrid>
+
+		<s:Button id="expandCollapseButton" label.normal="&lt;" label.scheduler="&gt;" 
+				  click="onSchedulerClick(event)" height="100%" width="20"
+				  skinClass="com.dotComIt.lifeAfterFlex.skins.SmallButtonSkin" fontSize="20"/>
+		
+		<tasks:Scheduler id="scheduler" includeIn="scheduler" 
+						 width="{(Math.min(hgroup.width/2)-30)}" height="100%" />
+	</s:HGroup>
+	
+</s:NavigatorContent>
